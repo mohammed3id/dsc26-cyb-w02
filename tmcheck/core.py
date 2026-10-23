@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import yaml
 
 class ModelError(Exception):
     """The file cannot be read as a threat model."""
@@ -39,12 +40,35 @@ def load_model(path) -> dict:
     file cannot be read, is not valid YAML, uses a tag safe_load refuses, has a top level that
     is not a mapping, or has one of the four sections that is not a list.
     """
-    raise NotImplementedError
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
+        raise ModelError(f"cannot load model: {e}") from e
+
+    if not isinstance(data, dict):
+        raise ModelError("top level of the model must be a mapping")
+
+    for key in ("zones", "elements", "flows", "threats"):
+        value = data.get(key)
+        if value is None:
+            data[key] = []
+        elif not isinstance(value, list):
+            raise ModelError(f"section {key!r} must be a list")
+    return data
 
 
 def applicable(kind: str, *, is_log: bool = False) -> set[str]:
     """STRIDE per element: the categories that apply to `kind`. Unknown kind: ValueError."""
-    raise NotImplementedError
+    if kind == "external_entity":
+        return {"S", "R"}
+    if kind == "process":
+        return {"S", "T", "R", "I", "D", "E"}
+    if kind == "data_store":
+        return {"T", "I", "D", "R"} if is_log else {"T", "I", "D"}
+    if kind == "data_flow":
+        return {"T", "I", "D"}
+    raise ValueError(f"unknown kind: {kind!r}")
 
 
 def validate(model: dict) -> list[Issue]:
