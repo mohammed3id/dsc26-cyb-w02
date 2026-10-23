@@ -47,7 +47,7 @@ def load_model(path) -> dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-    except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
+    except(OSError, UnicodeDecodeError, yaml.YAMLError, ValueError) as e:
         raise ModelError(f"cannot load model: {e}") from e
 
     if not isinstance(data, dict):
